@@ -33,7 +33,7 @@ import static org.emfjson.jackson.module.EMFModule.Feature.OPTION_SERIALIZE_DEFA
 
 public class EObjectFeatureProperty extends EObjectProperty {
 
-	private final EStructuralFeature feature;
+	protected final EStructuralFeature feature;
 	private final JavaType javaType;
 	private final boolean defaultValues;
 

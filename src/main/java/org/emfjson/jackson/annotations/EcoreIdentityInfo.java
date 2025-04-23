@@ -1,73 +1,80 @@
-/*
- * Copyright (c) 2019 Guillaume Hillairet and others.
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License v. 2.0 which is available at
- * https://www.eclipse.org/legal/epl-2.0, or the MIT License which is
- * available at https://opensource.org/licenses/MIT.
- *
- * SPDX-License-Identifier: EPL-2.0 OR MIT
- *
- */
 package org.emfjson.jackson.annotations;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.emfjson.jackson.databind.EMFContext;
-import org.emfjson.jackson.resource.JsonResource;
 import org.emfjson.jackson.utils.ValueReader;
 import org.emfjson.jackson.utils.ValueWriter;
 
-public class EcoreIdentityInfo {
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
 
-	public static final String PROPERTY = "@id";
-	private static final ValueReader<Object, String> defaultValueReader = (value, context) -> value.toString();
-	private static final ValueWriter<EObject, Object> defaultValueWriter = (object, context) -> {
-		Resource resource = EMFContext.getResource(context, object);
-		Object id;
-		if (resource instanceof JsonResource) {
-			id = ((JsonResource) resource).getID(object);
-		} else {
-			id = EMFContext.getURI(context, object).fragment();
-		}
-		return id;
-	};
+public class EcoreIdentityInfo<T extends EObject, R> {
 
-	private final String property;
-	private final ValueReader<Object, String> valueReader;
-	private final ValueWriter<EObject, Object> valueWriter;
+    public static final String PROPERTY = "@id";
 
-	public EcoreIdentityInfo() {
-		this(null, null, null);
-	}
+    private final String property;
+    private final ValueReader<T, String> valueReader;
+    private final ValueWriter<? super T, ? super R> valueWriter;
 
-	public EcoreIdentityInfo(String property) {
-		this(property, null, null);
-	}
+    // Default fallback reader: identity that throws
+    private static final ValueReader<EObject, String> defaultValueReader = new ValueReader<EObject, String>() {
+        @Override
+        public String readValue(EObject value, DeserializationContext context) {
+            throw new UnsupportedOperationException("No valueReader provided for EcoreIdentityInfo");
+        }
+    };
 
-	public EcoreIdentityInfo(String property, ValueReader<Object, String> valueReader) {
-		this(property, valueReader, null);
-	}
+    // Default fallback writer: returns null
+    private static final ValueWriter<EObject, Object> defaultValueWriter = new ValueWriter<>() {
+        @Override
+        public Object writeValue(EObject value, SerializerProvider context) {
+            return null;
+        }
+    };
 
-	public EcoreIdentityInfo(String property, ValueWriter<EObject, Object> valueWriter) {
-		this(property, null, valueWriter);
-	}
+    // No-arg constructor
+    public EcoreIdentityInfo() {
+        this(null, null, null);
+    }
 
-	public EcoreIdentityInfo(String property, ValueReader<Object, String> valueReader, ValueWriter<EObject, Object> valueWriter) {
-		this.property = property == null ? PROPERTY: property;
-		this.valueReader = valueReader == null ? defaultValueReader: valueReader;
-		this.valueWriter = valueWriter == null ? defaultValueWriter: valueWriter;
-	}
+    // Constructor with property only
+    public EcoreIdentityInfo(String property) {
+        this(property, null, null);
+    }
 
-	public String getProperty() {
-		return property;
-	}
+    // Constructor with ValueReader only
+    public EcoreIdentityInfo(String property, ValueReader<T, String> valueReader) {
+        this(property, valueReader, null);
+    }
 
-	public ValueReader<Object, String> getValueReader() {
-		return valueReader;
-	}
+    // Constructor with ValueWriter only
+    public EcoreIdentityInfo(String property, ValueWriter<? super T, ? super R> valueWriter) {
+        this(property, null, valueWriter);
+    }
 
-	public ValueWriter<EObject, Object> getValueWriter() {
-		return valueWriter;
-	}
+    // Full constructor
+    @SuppressWarnings("unchecked")
+    public EcoreIdentityInfo(String property,
+                             ValueReader<T, String> valueReader,
+                             ValueWriter<? super T, ? super R> valueWriter) {
+        this.property = property == null ? PROPERTY : property;
+        this.valueReader = valueReader != null
+                ? valueReader
+                : (ValueReader<T, String>) defaultValueReader;
+        this.valueWriter = valueWriter != null
+                ? valueWriter
+                : (ValueWriter<? super T, ? super R>) defaultValueWriter;
+    }
+
+    // Accessors
+    public String getProperty() {
+        return property;
+    }
+
+    public ValueReader<T, String> getValueReader() {
+        return valueReader;
+    }
+
+    public ValueWriter<? super T, ? super R> getValueWriter() {
+        return valueWriter;
+    }
 }

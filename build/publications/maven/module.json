@@ -1,0 +1,140 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.emfjson",
+    "module": "emfjson-jackson",
+    "version": "1.3.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.13"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.eclipse.emf",
+          "module": "org.eclipse.emf.common",
+          "version": {
+            "requires": "2.16.0"
+          }
+        },
+        {
+          "group": "org.eclipse.emf",
+          "module": "org.eclipse.emf.ecore",
+          "version": {
+            "requires": "2.19.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-databind",
+          "version": {
+            "requires": "2.10.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-annotations",
+          "version": {
+            "requires": "2.10.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "emfjson-jackson-1.3.1.jar",
+          "url": "emfjson-jackson-1.3.1.jar",
+          "size": 87285,
+          "sha512": "21b6ffb11c399c2c1b4c8de98c4e50885ad22f8de022773d5bd56685c245a519dce8ba9ef4fb5459da0dcea6eeffc6aae5e4318a0c24a8a31c494563b135654a",
+          "sha256": "d7d987061ac71b3824df2d3e0fbd582a2d460795f636fd8935f14917af8727ed",
+          "sha1": "3a32307f8f98e6a6a6b7fae8d65ef52483e6c683",
+          "md5": "ddf088eb8951da893269f3705d4525e6"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.eclipse.emf",
+          "module": "org.eclipse.emf.common",
+          "version": {
+            "requires": "2.16.0"
+          }
+        },
+        {
+          "group": "org.eclipse.emf",
+          "module": "org.eclipse.emf.ecore",
+          "version": {
+            "requires": "2.19.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-databind",
+          "version": {
+            "requires": "2.10.0"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-annotations",
+          "version": {
+            "requires": "2.10.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "emfjson-jackson-1.3.1.jar",
+          "url": "emfjson-jackson-1.3.1.jar",
+          "size": 87285,
+          "sha512": "21b6ffb11c399c2c1b4c8de98c4e50885ad22f8de022773d5bd56685c245a519dce8ba9ef4fb5459da0dcea6eeffc6aae5e4318a0c24a8a31c494563b135654a",
+          "sha256": "d7d987061ac71b3824df2d3e0fbd582a2d460795f636fd8935f14917af8727ed",
+          "sha1": "3a32307f8f98e6a6a6b7fae8d65ef52483e6c683",
+          "md5": "ddf088eb8951da893269f3705d4525e6"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "emfjson-jackson-1.3.1-sources.jar",
+          "url": "emfjson-jackson-1.3.1-sources.jar",
+          "size": 50503,
+          "sha512": "6efc84f953231422cc3d437cde0151ac73ec98e138fa85944e8bd7528055e96e61a502c22f7d100c7505874144e384b16be9a53d494fc78320a6c7ec550f3dc2",
+          "sha256": "434cc3f4a35c3b768cc716159feae13a57ef24322173ac75cb7e6081e89669d1",
+          "sha1": "5bfb5baeaf013e656873f00f9d535564f63cc37c",
+          "md5": "bcadc7d3716efd1061481c5c89aceee9"
+        }
+      ]
+    }
+  ]
+}

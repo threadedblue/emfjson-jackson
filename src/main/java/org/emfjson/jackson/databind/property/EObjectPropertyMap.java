@@ -76,6 +76,18 @@ public class EObjectPropertyMap {
 			return propertyMap;
 		}
 
+		// protected EObjectProperty createProperty(EStructuralFeature feature, JavaType javaType) {
+		// 	return new EObjectFeatureProperty(
+		// 		feature.getName(),      // String
+		// 		feature,                // EStructuralFeature
+		// 		javaType.getRawClass()  // Class<?>
+		// 	);			
+		// }
+		
+		protected EObjectProperty createProperty(EStructuralFeature feature, JavaType javaType) {
+			return new EObjectFeatureProperty(feature, javaType, features);
+		}
+
 		private void buildCache(DatabindContext ctxt) {
 			ResourceSet resourceSet = EMFContext.getResourceSet(ctxt);
 
@@ -128,17 +140,17 @@ public class EObjectPropertyMap {
 			return new EObjectPropertyMap(type, propertiesMap, properties);
 		}
 
-		private Optional<EObjectFeatureProperty> createFeatureProperty(DatabindContext ctxt, EcoreTypeFactory factory,
-		                                                               EClass type, EStructuralFeature feature) {
+		private Optional<EObjectProperty> createFeatureProperty(DatabindContext ctxt, EcoreTypeFactory factory,
+		EClass type, EStructuralFeature feature) {
 			if (isCandidate(feature)) {
 				JavaType javaType = factory.typeOf(ctxt, type, feature);
 				if (javaType != null) {
-					return Optional.of(new EObjectFeatureProperty(feature, javaType, features));
+				return Optional.of(createProperty(feature, javaType));
 				}
 			}
-
 			return Optional.empty();
 		}
+
 
 		boolean isFeatureMapEntry(EStructuralFeature feature) {
 			EAnnotation annotation = feature.getEAnnotation(ExtendedMetaData.ANNOTATION_URI);
