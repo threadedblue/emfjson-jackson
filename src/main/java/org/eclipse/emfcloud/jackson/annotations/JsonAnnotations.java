@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2019-2021 Guillaume Hillairet and others.
+ * Copyright (c) 2019-2022 Guillaume Hillairet and others.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0 which is available at
@@ -12,12 +12,14 @@ package org.eclipse.emfcloud.jackson.annotations;
 
 import static org.eclipse.emfcloud.jackson.annotations.EcoreTypeInfo.USE.CLASS;
 import static org.eclipse.emfcloud.jackson.annotations.EcoreTypeInfo.USE.NAME;
+import static org.eclipse.emfcloud.jackson.module.EMFModule.Feature.OPTION_USE_NAMES_FROM_EXTENDED_META_DATA;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EAnnotation;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.ENamedElement;
@@ -38,11 +40,12 @@ public final class JsonAnnotations {
     * Returns the name that should be use to serialize the property.
     *
     * @param element any element
+    * @param features the EMF module's feature flags
     * @return name of property
     */
-   public static String getElementName(final ENamedElement element) {
+   public static String getElementName(final ENamedElement element, final int features) {
       String value = getValue(element, "JsonProperty", "value");
-      if (value == null) {
+      if (value == null && OPTION_USE_NAMES_FROM_EXTENDED_META_DATA.enabledIn(features)) {
          value = getValue(element, EXTENDED_METADATA, "name");
       }
 
@@ -145,6 +148,18 @@ public final class JsonAnnotations {
     */
    public static String getIdentityProperty(final EClassifier classifier) {
       return getValue(classifier, "JsonIdentity", "property");
+   }
+
+   /**
+    * Returns {@code true}, if the feature is annotated to be treated as raw JSON.
+    *
+    * @param feature any feature
+    * @return {@code true}, if raw (de)serialization should be done for this feature
+    */
+   public static boolean isRawValue(final EStructuralFeature feature) {
+      return Boolean.parseBoolean(getValue(feature, "JsonRawValue", "value"))
+            && feature instanceof EAttribute
+            && String.class.getName().equals(feature.getEType().getInstanceClassName());
    }
 
    protected static String getValue(final ENamedElement element, final String annotation, final String property) {

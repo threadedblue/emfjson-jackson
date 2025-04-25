@@ -18,6 +18,7 @@ import static org.eclipse.emfcloud.jackson.annotations.JsonAnnotations.getAliase
 import static org.eclipse.emfcloud.jackson.annotations.JsonAnnotations.getElementName;
 import static org.eclipse.emfcloud.jackson.module.EMFModule.Feature.OPTION_USE_ID;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -38,7 +39,6 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.util.ExtendedMetaData;
 import org.eclipse.emf.ecore.util.FeatureMapUtil;
 import org.eclipse.emfcloud.jackson.annotations.EcoreIdentityInfo;
 import org.eclipse.emfcloud.jackson.annotations.EcoreReferenceInfo;
@@ -47,6 +47,7 @@ import org.eclipse.emfcloud.jackson.annotations.JsonAnnotations;
 import org.eclipse.emfcloud.jackson.databind.EMFContext;
 import org.eclipse.emfcloud.jackson.databind.type.EcoreTypeFactory;
 import org.eclipse.emfcloud.jackson.module.EMFModule;
+import org.eclipse.emfcloud.jackson.utils.EObjects;
 
 import com.fasterxml.jackson.databind.DatabindContext;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -56,7 +57,7 @@ public final class EObjectPropertyMap {
 
    public static class Builder {
 
-      private final Map<EClass, EObjectPropertyMap> cache = new WeakHashMap<>();
+      private final Map<EClass, EObjectPropertyMap> cache = Collections.synchronizedMap(new WeakHashMap<>());
 
       private final EcoreIdentityInfo identityInfo;
       private final EcoreTypeInfo typeInfo;
@@ -137,7 +138,7 @@ public final class EObjectPropertyMap {
                EAnnotation annotation = operation.getEAnnotation("JsonProperty");
 
                if (annotation != null && operation.getEParameters().isEmpty()) {
-                  add.accept(new EObjectOperationProperty(getElementName(operation), operation));
+                  add.accept(new EObjectOperationProperty(getElementName(operation, features), operation));
                }
             }
          }
@@ -158,12 +159,6 @@ public final class EObjectPropertyMap {
          return Optional.empty();
       }
 
-      boolean isFeatureMapEntry(final EStructuralFeature feature) {
-         EAnnotation annotation = feature.getEAnnotation(ExtendedMetaData.ANNOTATION_URI);
-
-         return annotation != null && annotation.getDetails().containsKey("group");
-      }
-
       boolean isCandidate(final EStructuralFeature feature) {
          if (feature instanceof EAttribute) {
             return isCandidate((EAttribute) feature);
@@ -172,16 +167,40 @@ public final class EObjectPropertyMap {
       }
 
       boolean isCandidate(final EAttribute attribute) {
-         return isFeatureMapEntry(attribute) || (!FeatureMapUtil.isFeatureMap(attribute) &&
-            !(attribute.isDerived() || attribute.isTransient()) &&
-            !JsonAnnotations.shouldIgnore(attribute));
+         if (EObjects.isFeatureMapEntry(attribute)) {
+            /*
+             * Feature map entries are not stored on their own,
+             * but as a collection member of the grouping feature
+             * in order to preserve relative order.
+             */
+            return false;
+         }
+         if (FeatureMapUtil.isFeatureMap(attribute)) {
+            /*
+             * Displayed as a collections of feature map entries
+             */
+            return true;
+         }
+         return !(attribute.isDerived() || attribute.isTransient()) &&
+            !JsonAnnotations.shouldIgnore(attribute);
       }
 
       boolean isCandidate(final EReference eReference) {
-         if (isFeatureMapEntry(eReference)) {
+         if (EObjects.isFeatureMapEntry(eReference)) {
+            /*
+             * Feature map entries are not stored on their own,
+             * but as a collection member of the grouping feature
+             * in order to preserve relative order.
+             */
+            return false;
+         }
+         if (FeatureMapUtil.isFeatureMap(eReference)) {
+            /*
+             * Displayed as a collections of feature map entries
+             */
             return true;
          }
-         if (FeatureMapUtil.isFeatureMap(eReference) || eReference.isTransient() || JsonAnnotations.shouldIgnore(eReference)) {
+         if (eReference.isTransient() || JsonAnnotations.shouldIgnore(eReference)) {
             return false;
          }
 
@@ -193,7 +212,8 @@ public final class EObjectPropertyMap {
          EcoreTypeInfo currentTypeInfo = null;
 
          if (type != null && !JsonAnnotations.shouldIgnoreType(type)) {
-            currentTypeInfo = JsonAnnotations.getTypeProperty(type, typeInfo.getValueReader(), typeInfo.getValueWriter());
+            currentTypeInfo = JsonAnnotations.getTypeProperty(type, typeInfo.getValueReader(),
+               typeInfo.getValueWriter());
          }
 
          if (currentTypeInfo == null) {
