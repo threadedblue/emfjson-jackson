@@ -58,11 +58,11 @@
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.fork>true</maven.compiler.fork>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<jackson-version>2.12.6</jackson-version>
+		<jackson-version>2.16.2</jackson-version>
 		<emf-version>2.19.0</emf-version>
 		<emf-common-version>2.16.0</emf-common-version>
 		<emf-codegen-version>2.19.0</emf-codegen-version>
-		<xtext-version>2.19.0</xtext-version>
+		<xtext-version>2.26.0</xtext-version>
 		<ecore-xtext-version>1.4.0</ecore-xtext-version>
 		<ecore-xcore-version>1.11.0</ecore-xcore-version>
 		<ecore-xcore-lib-version>1.4.0</ecore-xcore-lib-version>
@@ -102,6 +102,20 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-annotations</artifactId>
 			<version>${jackson-version}</version>
+		</dependency>
+
+		<!-- SLF4J API -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>2.0.9</version> <!-- or latest stable -->
+		</dependency>
+
+		<!-- Logback implementation of SLF4J -->
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.4.11</version> <!-- or latest stable -->
 		</dependency>
 
 		<!-- tests -->
@@ -148,6 +162,12 @@
 			<artifactId>org.eclipse.xtext.xbase.lib</artifactId>
 			<version>${xtext-version}</version>
 			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+		<groupId>org.hl7</groupId>
+		<artifactId>fhir.emf</artifactId>
+		<version>4.3.0</version>
 		</dependency>
 
 	</dependencies>
@@ -244,7 +264,7 @@ Export-Package: org.eclipse.emfcloud.jackson.*
 					<plugin>
 						<groupId>org.codehaus.mojo</groupId>
 						<artifactId>build-helper-maven-plugin</artifactId>
-						<version>1.9.1</version>
+						<version>3.5.0</version>
 						<executions>
 							<execution>
 								<id>add-test-source</id>

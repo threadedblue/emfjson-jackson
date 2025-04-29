@@ -17,6 +17,7 @@ import static org.eclipse.emfcloud.jackson.module.EMFModule.Feature.OPTION_SERIA
 
 import java.io.IOException;
 
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -27,21 +28,28 @@ import org.eclipse.emfcloud.jackson.databind.deser.RawDeserializer;
 import org.eclipse.emfcloud.jackson.databind.deser.ReferenceEntries;
 import org.eclipse.emfcloud.jackson.databind.deser.ReferenceEntry;
 import org.eclipse.emfcloud.jackson.databind.type.FeatureKind;
+import org.hl7.fhir.FhirFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.impl.UnknownSerializer;
 import com.fasterxml.jackson.databind.ser.std.RawSerializer;
 
 public class EObjectFeatureProperty extends EObjectProperty {
+
+	private static final Logger log = LoggerFactory.getLogger(EObjectFeatureProperty.class);
 
    private final EStructuralFeature feature;
    private final JavaType javaType;
@@ -133,19 +141,103 @@ public class EObjectFeatureProperty extends EObjectProperty {
    }
 
    protected void deserializeValue(final JsonParser jp, final EObject current, final DeserializationContext ctxt,
-      final JsonToken token, final boolean isMap) throws JsonParseException, IOException, JsonProcessingException {
+    final JsonToken token, final boolean isMap) throws IOException, JsonProcessingException {
+
+      log.trace("deserializeValue==>");
+
       if (feature.isMany()) {
          if (token != JsonToken.START_ARRAY && !isMap) {
             throw new JsonParseException(jp, "Expected START_ARRAY token, got " + token);
          }
 
-         deserializer.deserialize(jp, ctxt, current.eGet(feature));
+         if (isFHIRStringListFeature(feature)) {
+            deserializeFHIRStringList(jp, current, ctxt);
+         } else if (isFHIRCanonicalListFeature(feature)) {
+            deserializeFHIRCanonicalList(jp, current, ctxt);
+         }  else {
+            deserializer.deserialize(jp, ctxt, current.eGet(feature));
+         }
       } else {
          Object value = deserializer.deserialize(jp, ctxt);
 
          if (value != null) {
             current.eSet(feature, value);
          }
+      }
+   }
+
+   private boolean isFHIRStringListFeature(EStructuralFeature feature) {
+
+      log.trace("isFHIRStringListFeature=={}", feature.getName());
+
+      return feature.getEType() != null
+         && "String".equals(feature.getEType().getName())
+         && "http://hl7.org/fhir".equals(feature.getEType().getEPackage().getNsURI());
+   }
+
+   protected void deserializeFHIRStringList(JsonParser jp, EObject current, DeserializationContext ctxt) throws IOException {
+ 
+      log.trace("deserializeFHIRStringList==>");
+
+     EList<Object> list = (EList<Object>) current.eGet(feature);
+
+      if (jp.isExpectedStartArrayToken()) {
+         ensureStringElementDeserializer(ctxt);
+
+         while (jp.nextToken() != JsonToken.END_ARRAY) {
+            if (jp.getCurrentToken() == JsonToken.VALUE_STRING) {
+               EObject fhirString = (EObject) stringElementDeserializer.deserialize(jp, ctxt);
+               list.add(fhirString);
+            } else {
+               throw new JsonParseException(jp, "Expected VALUE_STRING inside array for FHIR String");
+            }
+         }
+      } else {
+         throw new JsonParseException(jp, "Expected START_ARRAY token for FHIR String list field");
+      }
+   }
+
+   private boolean isFHIRCanonicalListFeature(EStructuralFeature feature) {
+      return feature.getEType() != null
+         && "Canonical".equals(feature.getEType().getName())
+         && "http://hl7.org/fhir".equals(feature.getEType().getEPackage().getNsURI());
+   }
+
+   @SuppressWarnings("unchecked")
+   private void deserializeFHIRCanonicalList(JsonParser jp, EObject current, DeserializationContext ctxt) throws IOException {
+      EList<Object> list = (EList<Object>) current.eGet(feature);
+
+      ObjectCodec codec = jp.getCodec();
+      JsonParser parser = jp;
+
+      if (parser.isExpectedStartArrayToken()) {
+         while (parser.nextToken() != JsonToken.END_ARRAY) {
+               if (parser.getCurrentToken() == JsonToken.VALUE_STRING) {
+                  String canonicalValue = parser.getValueAsString();
+
+                  EObject canonical = FhirFactory.eINSTANCE.createCanonical();
+
+                  canonical.eSet(canonical.eClass().getEStructuralFeature("value"), canonicalValue);
+
+                  list.add(canonical);
+               } else {
+                  throw new JsonParseException(parser, "Expected VALUE_STRING inside array for FHIR Canonical");
+               }
+         }
+      } else {
+         throw new JsonParseException(parser, "Expected START_ARRAY token for FHIR Canonical list field");
+      }
+   }
+
+   private JsonDeserializer<Object> stringElementDeserializer;
+
+   private void ensureStringElementDeserializer(DeserializationContext ctxt) throws JsonMappingException {
+ 
+      log.trace("ensureStringElementDeserializer==>");
+
+      if (stringElementDeserializer == null) {
+         JavaType type = ctxt.constructType(org.hl7.fhir.String.class);
+         stringElementDeserializer = ctxt.findContextualValueDeserializer(type, null);
       }
    }
 

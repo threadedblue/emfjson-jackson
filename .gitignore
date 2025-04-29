@@ -2,3 +2,6 @@ target
 lib
 .idea
 java-gen
+.classpath
+.project
+.settings/
