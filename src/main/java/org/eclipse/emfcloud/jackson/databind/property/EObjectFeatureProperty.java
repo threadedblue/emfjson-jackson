@@ -18,6 +18,7 @@ import static org.eclipse.emfcloud.jackson.module.EMFModule.Feature.OPTION_SERIA
 import java.io.IOException;
 
 import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -42,6 +43,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.impl.UnknownSerializer;
@@ -82,6 +84,7 @@ public class EObjectFeatureProperty extends EObjectProperty {
       JsonToken token = null;
 
       if (jp.getCurrentToken() == JsonToken.FIELD_NAME) {
+         log.trace("Inside FIELD_NAME=={}", jp.currentName());
          token = jp.nextToken();
       }
 
@@ -111,7 +114,13 @@ public class EObjectFeatureProperty extends EObjectProperty {
                }
             }
 
-            deserializeValue(jp, current, ctxt, token, isMap);
+            log.warn("FIELD: {}", feature.getName());
+            log.warn("TOKEN: {}", jp.getCurrentToken());
+            
+            if (jp.getCurrentToken() == JsonToken.FIELD_NAME) {
+               jp.nextToken(); // ✅ Advance to START_ARRAY
+            }
+            deserializeValue(jp, current, ctxt, isMap);
          }
             break;
          case MANY_REFERENCE:
@@ -141,12 +150,22 @@ public class EObjectFeatureProperty extends EObjectProperty {
    }
 
    protected void deserializeValue(final JsonParser jp, final EObject current, final DeserializationContext ctxt,
-    final JsonToken token, final boolean isMap) throws IOException, JsonProcessingException {
+    final boolean isMap) throws IOException, JsonProcessingException {
 
       log.trace("deserializeValue==>");
 
+      JsonToken token = jp.getCurrentToken();
+
       if (feature.isMany()) {
+         EList<Object> list = (EList<Object>) current.eGet(feature);
+         if (list == null) {
+            throw new JsonParseException(jp, "Target list for feature '" + feature.getName() + "' is null");
+         }
+   
          if (token != JsonToken.START_ARRAY && !isMap) {
+            log.debug("token1=={}", jp.getCurrentToken());
+            log.debug("token2=={}", token.name());
+            log.debug("feature=={}", feature.getName());
             throw new JsonParseException(jp, "Expected START_ARRAY token, got " + token);
          }
 
@@ -154,6 +173,8 @@ public class EObjectFeatureProperty extends EObjectProperty {
             deserializeFHIRStringList(jp, current, ctxt);
          } else if (isFHIRCanonicalListFeature(feature)) {
             deserializeFHIRCanonicalList(jp, current, ctxt);
+         } else if (isContainedResourceListFeature(feature)) {
+            deserializeContainedResourceList(jp, current, ctxt);
          }  else {
             deserializer.deserialize(jp, ctxt, current.eGet(feature));
          }
@@ -226,6 +247,59 @@ public class EObjectFeatureProperty extends EObjectProperty {
          }
       } else {
          throw new JsonParseException(parser, "Expected START_ARRAY token for FHIR Canonical list field");
+      }
+   }
+
+   private boolean isContainedResourceListFeature(EStructuralFeature feature) {
+      return "contained".equals(feature.getName())
+         && "ResourceContainer".equals(feature.getEType().getName())
+         && "http://hl7.org/fhir".equals(feature.getEType().getEPackage().getNsURI());
+   }
+
+   @SuppressWarnings("unchecked")
+   private void deserializeContainedResourceList(JsonParser jp, EObject current, DeserializationContext ctxt) throws IOException {
+      log.trace("deserializeContainedResourceList==>");
+
+      EList<Object> list = (EList<Object>) current.eGet(feature);
+      ObjectCodec codec = jp.getCodec();
+
+      if (!jp.isExpectedStartArrayToken()) {
+         throw new JsonParseException(jp, "Expected START_ARRAY token for 'contained'");
+      }
+
+      while (jp.nextToken() != JsonToken.END_ARRAY) {
+         JsonNode node = jp.readValueAsTree();
+         JsonNode typeNode = node.get("resourceType");
+         if (typeNode == null || !typeNode.isTextual()) {
+            throw new JsonParseException(jp, "Missing or invalid resourceType in contained entry");
+         }
+
+         String resourceType = typeNode.asText();
+         EClass targetEClass = (EClass) FhirFactory.eINSTANCE.getEPackage().getEClassifier(resourceType);
+         if (targetEClass == null) {
+            throw new JsonParseException(jp, "Unknown FHIR resourceType: " + resourceType);
+         }
+
+         EObject resource = FhirFactory.eINSTANCE.create(targetEClass);
+         JsonParser resourceParser = node.traverse(codec);
+         resourceParser.nextToken();
+
+         if (codec instanceof com.fasterxml.jackson.databind.ObjectMapper) {
+            ((com.fasterxml.jackson.databind.ObjectMapper) codec)
+               .readerForUpdating(resource).readValue(resourceParser);
+         } else {
+            codec.readValue(resourceParser, resource.getClass());
+         }
+
+         EObject container = FhirFactory.eINSTANCE.createResourceContainer();
+         for (EStructuralFeature ref : container.eClass().getEAllStructuralFeatures()) {
+            if (ref.getEType() == targetEClass) {
+               container.eSet(ref, resource);
+               break;
+            }
+         }
+
+         list.add(container);
       }
    }
 
